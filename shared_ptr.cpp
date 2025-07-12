@@ -20,10 +20,22 @@ public:
     SharedPtr(const SharedPtr& other) {
         ptr = other.ptr;
         ref_count = other.ref_count;
+        weak_count = other.weak_count;
         if (ref_count) {
             ++(*ref_count);
         }
     }
+
+    SharedPtr(SharedPtr&& other) noexcept {
+        ptr = other.ptr;
+        ref_count = other.ref_count;
+        weak_count = other.weak_count;
+
+        other.ptr = nullptr;
+        other.ref_count = nullptr;
+        other.weak_count = nullptr;
+    }
+
 
 
     SharedPtr& operator=(const SharedPtr& other) {
@@ -31,30 +43,49 @@ public:
             release();
             ptr = other.ptr;
             ref_count = other.ref_count;
+            weak_count = other.weak_count;
+            if (ref_count) {
+                ++(*ref_count);
+            }
         }
         return *this;
     }
 
+
+
     SharedPtr& operator=(SharedPtr&& other) noexcept {
         if (this != &other) {
             release();
-            ptr = std::move(other.ptr);
-            ref_count = std::move(other.ref_count);
+            ptr = other.ptr;
+            ref_count = other.ref_count;
+            weak_count = other.weak_count;
+            other.ptr = nullptr;
+            other.ref_count = nullptr;
+            other.weak_count = nullptr;
         }
         return *this;
-    };
+    }
 
     ~SharedPtr() {
         release();
     }
 
-    T& operator*() const noexcept {
+    const T& operator*() const noexcept {
         return *ptr;
     }
 
-    T* operator->() const noexcept {
+    const T* operator->() const noexcept {
         return ptr;
     }
+
+    T& operator*() {
+        return *ptr;
+    }
+
+    T* operator->() {
+        return ptr;
+    }
+
 
     T* get() const noexcept {
         return ptr;
@@ -82,12 +113,17 @@ private:
             if (*ref_count == 0) {
                 delete ptr;
                 delete ref_count;
+                if (weak_count && *weak_count == 0) {
+                    delete weak_count;
+                }
             }
             ptr = nullptr;
             ref_count = nullptr;
+            weak_count = nullptr;
         }
     }
 };
+
 
 
 int main() {
